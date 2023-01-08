@@ -1237,3 +1237,251 @@ def tg01fd(l,n,m,p,A,E,B,C,Q=None,Z=None,compq='N',compz='N',joba='N',tol=0.0,ld
     return A,E,B,C,ranke,rnka22,Q,Z
 
 # to be replaced by python wrappers
+
+
+def tb01uy(n, m1, m2, p, A, B, C, jobz='I', tol=1e-8, ldwork=None):
+    """
+    To find a controllable realization for the linear time-invariant
+    multi-input system
+
+            dX/dt = A * X + B1 * U1 + B2 * U2,
+               Y  = C * X,
+
+    where A, B1, B2 and C are N-by-N, N-by-M1, N-by-M2, and P-by-N
+    matrices, respectively, and A and [B1,B2] are reduced by this
+    routine to orthogonal canonical form using (and optionally
+    accumulating) orthogonal similarity transformations, which are
+    also applied to C.  Specifically, the system (A, [B1,B2], C) is
+    reduced to the triplet (Ac, [Bc1,Bc2], Cc), where
+    Ac = Z' * A * Z, [Bc1,Bc2] = Z' * [B1,B2], Cc = C * Z,  with
+
+            [ Acont     *    ]                [ Bcont1, Bcont2 ]
+       Ac = [                ],   [Bc1,Bc1] = [                ],
+            [   0    Auncont ]                [   0        0   ]
+
+       and
+
+               [ A11 A12  . . .  A1,p-2 A1,p-1 A1p ]
+               [ A21 A22  . . .  A2,p-2 A2,p-1 A2p ]
+               [ A31 A32  . . .  A3,p-2 A3,p-1 A3p ]
+               [  0  A42  . . .  A4,p-2 A4,p-1 A4p ]
+       Acont = [  .   .   . . .    .      .     .  ],
+               [  .   .     . .    .      .     .  ]
+               [  .   .       .    .      .     .  ]
+               [  0   0   . . .  Ap,p-2 Ap,p-1 App ]
+
+                   [ B11 B12 ]
+                   [  0  B22 ]
+                   [  0   0  ]
+                   [  0   0  ]
+       [Bc1,Bc2] = [  .   .  ],
+                   [  .   .  ]
+                   [  .   .  ]
+                   [  0   0  ]
+
+    where the blocks  B11, B22, A31, ..., Ap,p-2  have full row ranks and
+    p is the controllability index of the pair (A,[B1,B2]).  The size of the
+    block  Auncont  is equal to the dimension of the uncontrollable
+    subspace of the pair (A,[B1,B2]).
+
+    ARGUMENTS
+
+    Mode Parameters
+
+    JOBZ    CHARACTER*1
+            Indicates whether the user wishes to accumulate in a
+            matrix Z the orthogonal similarity transformations for
+            reducing the system, as follows:
+            = 'N':  Do not form Z and do not store the orthogonal
+                    transformations;
+            = 'F':  Do not form Z, but store the orthogonal
+                    transformations in the factored form;
+            = 'I':  Z is initialized to the unit matrix and the
+                    orthogonal transformation matrix Z is returned.
+
+    Input/Output Parameters
+
+    N       (input) INTEGER
+            The order of the original state-space representation,
+            i.e., the order of the matrix A.  N >= 0.
+
+    M1      (input) INTEGER
+            The number of system inputs in U1, or of columns of B1.
+            M1 >= 0.
+
+    M2      (input) INTEGER
+            The number of system inputs in U2, or of columns of B2.
+            M2 >= 0.
+
+    P       (input) INTEGER
+            The number of system outputs, or of rows of C.  P >= 0.
+
+    A       (input/output) DOUBLE PRECISION array, dimension (LDA,N)
+            On entry, the leading N-by-N part of this array must
+            contain the original state dynamics matrix A.
+            On exit, the leading N-by-N part of this array contains
+            the transformed state dynamics matrix Ac = Z'*A*Z. The
+            leading NCONT-by-NCONT diagonal block of this matrix,
+            Acont, is the state dynamics matrix of a controllable
+            realization for the original system. The elements below
+            the second block-subdiagonal are set to zero.
+
+    LDA     INTEGER
+            The leading dimension of the array A.  LDA >= MAX(1,N).
+
+    B       (input/output) DOUBLE PRECISION array, dimension
+            (LDB,M1+M2)
+            On entry, the leading N-by-(M1+M2) part of this array must
+            contain the compound input matrix B = [B1,B2], where B1 is
+            N-by-M1 and B2 is N-by-M2.
+            On exit, the leading N-by-(M1+M2) part of this array
+            contains the transformed compound input matrix [Bc1,Bc2] =
+            Z'*[B1,B2]. The leading NCONT-by-(M1+M2) part of this
+            array, [Bcont1, Bcont2], is the compound input matrix of
+            a controllable realization for the original system.
+            All elements below the first block-diagonal are set to
+            zero.
+
+    LDB     INTEGER
+            The leading dimension of the array B.  LDB >= MAX(1,N).
+
+          (input/output) DOUBLE PRECISION array, dimension (LDC,N)
+            On entry, the leading P-by-N part of this array must
+            contain the output matrix C.
+            On exit, the leading P-by-N part of this array contains
+            the transformed output matrix Cc, given by C * Z.
+
+    LD    INTEGER
+            The leading dimension of the array C.  LDC >= MAX(1,P).
+
+    NCONT   (output) INTEGER
+            The order of the controllable state-space representation.
+
+    INDCON  (output) INTEGER
+            The controllability index of the controllable part of the
+            system representation.
+
+    NBLK    (output) INTEGER array, dimension (2*N)
+            The leading INDCON elements of this array contain the
+            orders of the diagonal blocks of Acont. INDCON is always
+            an even number, and the INDCON/2 odd and even components
+            of NBLK have decreasing values, respectively.
+            Note that some elements of NBLK can be zero.
+
+    Z       (output) DOUBLE PRECISION array, dimension (LDZ,N)
+            If JOBZ = 'I', then the leading N-by-N part of this
+            array contains the matrix of accumulated orthogonal
+            similarity transformations which reduces the given system
+            to orthogonal canonical form.
+            If JOBZ = 'F', the elements below the diagonal, with the
+            array TAU, represent the orthogonal transformation matrix
+            as a product of elementary reflectors. The transformation
+            matrix can then be obtained by calling the LAPACK Library
+            routine DORGQR.
+            If JOBZ = 'N', the array Z is not referenced and can be
+            supplied as a dummy array (i.e., set parameter LDZ = 1 and
+            declare this array to be Z(1,1) in the calling program).
+
+    LDZ     INTEGER
+            The leading dimension of the array Z. If JOBZ = 'I' or
+            JOBZ = 'F', LDZ >= MAX(1,N); if JOBZ = 'N', LDZ >= 1.
+
+    TAU     (output) DOUBLE PRECISION array, dimension (MIN(N,M1+M2))
+            The elements of TAU contain the scalar factors of the
+            elementary reflectors used in the reduction of [B1,B2]
+            and A.
+
+    Tolerances
+
+    TOL     DOUBLE PRECISION
+            The tolerance to be used in rank determinations when
+            transforming (A, [B1,B2]). If the user sets TOL > 0, then
+            the given value of TOL is used as a lower bound for the
+            reciprocal condition number (see the description of the
+            argument RCOND in the SLICOT routine MB03OD);  a
+            (sub)matrix whose estimated condition number is less than
+            1/TOL is considered to be of full rank.  If the user sets
+            TOL <= 0, then an implicitly computed, default tolerance,
+            defined by  TOLDEF = N*N*EPS,  is used instead, where EPS
+            is the machine precision (see LAPACK Library routine
+            DLAMCH).
+
+    Workspace
+
+    IWORK   INTEGER array, dimension (MAX(M1,M2))
+
+    DWORK   DOUBLE PRECISION array, dimension (LDWORK)
+            On exit, if INFO = 0, DWORK(1) returns the optimal value
+            of LDWORK.
+
+    LDWORK  INTEGER
+            The length of the array DWORK.  LDWORK >= 1, and
+            LDWORK >= MAX(N, 3*MAX(M1,M2), P), if MIN(N,M1+M2) > 0.
+            For optimum performance LDWORK should be larger.
+
+            If LDWORK = -1, then a workspace query is assumed; the
+            routine only calculates the optimal size of the DWORK
+            array, returns this value as the first entry of the DWORK
+            array, and no error message related to LDWORK is issued by
+            XERBLA.
+
+    Error Indicator
+
+    INFO    INTEGER
+            = 0:  successful exit;
+            < 0:  if INFO = -i, the i-th argument had an illegal
+                  value.
+
+    METHOD
+
+    The implemented algorithm [1] represents a specialization of the
+    controllability staircase algorithm of [2] to the special structure
+    of the input matrix B = [B1,B2].
+
+    REFERENCES
+
+    [1] Varga, A.
+        Reliable algorithms for computing minimal dynamic covers.
+        Proc. CDC'2003, Hawaii, 2003.
+
+    [2] Varga, A.
+        Numerically stable algorithm for standard controllability
+        form determination.
+        Electronics Letters, vol. 17, pp. 74-75, 1981.
+
+    NUMERICAL ASPECTS
+                               3
+    The algorithm requires 0(N ) operations and is backward stable.
+
+    FURTHER COMMENTS
+
+    If the system matrices A and B are badly scaled, it would be
+    useful to scale them with SLICOT routine TB01ID, before calling
+    the routine.
+
+    CONTRIBUTOR
+
+    A. Varga, DLR Oberpfaffenhofen, March 2003.
+
+    REVISIONS
+
+    A. Varga, DLR Oberpfaffenhofen, April 2003, December 2006.
+    V. Sima, December 2016, April 2017.
+
+    KEYWORDS
+
+    Controllability, minimal realization, orthogonal canonical form,
+    orthogonal transformation.
+    """
+    hidden = ' (hidden by the wrapper)'
+    arg_list = ['job', 'n', 'm1', 'm2','p','A','lda'+hidden,'B','ldb'+hidden,
+                'C', 'ldc'+hidden, 'ncont', 'indcon', 'nblk', 'Z', 'ldz', 'tau', 'tol', 'iwork'+hidden, 'dwork'+hidden, 'ldwork','info'+hidden]
+    if ldwork is None:
+        ldwork = max(1, 3*max(m1,m2), p)
+    elif ldwork < max(1, 3*max(m1,m2), p) or ldwork < 1:
+        raise SlycotParameterError("ldwork is too small", -15)
+    out = _wrapper.tb01uy(n=n,m1=m1, m2=m2, p=p,a=A,b=B,c=C,
+                          jobz=jobz, tol=tol, ldwork=ldwork)
+
+    raise_if_slycot_error(out[-1], arg_list)
+    return out[:-1]
